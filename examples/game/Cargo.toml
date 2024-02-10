@@ -1,0 +1,55 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+log = "0.4"
+wgpu = "0.18"
+winit = "0.28"
+egui = {version="0.24.1", default-features=false}
+egui-winit = {version="0.24.1", default-features=false}
+egui-wgpu = "0.24.1"
+
+mg_physics = {path ="../../mg_physics"}
+mg_render = {path ="../../mg_render"}
+mg_core = {path ="../../mg_core"}
+
+bitflags = "2.4.2"
+image = "0.24.8"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1.0"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.30"
+js-sys = "0.3"
+percent-encoding = "2.1"
+web-sys = { version = "0.3.58", features = [
+  "Clipboard",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "Window",
+] }
+wasm_thread = "0.2.0"
+getrandom.features =["js"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tracing-subscriber = "0.3"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[patch.crates-io]
+wasm-bindgen = {git="https://github.com/rustwasm/wasm-bindgen"}

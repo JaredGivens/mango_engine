@@ -1,0 +1,7 @@
+target/
+pkg/
+node_modules/
+build/
+venv/
+.DS_Store
+

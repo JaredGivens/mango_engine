@@ -1,0 +1,16 @@
+[package]
+name = "mg_render"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4"
+wgpu = "0.18"
+winit = "0.28"
+gltf = "1.4.0"
+image = {version ="0.24", default-features = false, features=["png", "jpeg"]}
+bytemuck = {vertion = "1.14.0", features = ["derive"]}
+mg_core = {path = "../mg_core"}
+anyhow = "1.0.79"

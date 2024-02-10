@@ -1,0 +1,19 @@
+{
+  "name": "fe",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "node esbuild.js"
+  },
+  "author": "jared",
+  "license": "ISC",
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.2.17",
+    "Buffer": "^0.0.0",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.9"
+  }
+}
