@@ -60,7 +60,13 @@ impl Geometry {
 
         log::warn!("primitives {}", mesh.primitives().len());
         let primitive = mesh.primitives().next().unwrap();
+        let mut ranges = Ranges {
+            index: [0, 0], // Initialize with default values
+            vertex: [0, 0], // Initialize with default values
+            uv: [0, 0], // Initialize with default values
+        };
 
+        let mut elm_amt = 0;
         log::info!("{:?}", primitive);
         if let Some(view) = primitive.get(&gltf::Semantic::TexCoords(2)).unwrap().view() {
             ranges.uv[0] = view.offset() as u32;
@@ -71,9 +77,9 @@ impl Geometry {
             elm_amt,
             ranges,
             buffer,
-            bin,
-            g_pipeline: None,
-            ray_pipeline: None,
+            // bin,
+            // g_pipeline: None,
+            // ray_pipeline: None,
         }
     }
 }

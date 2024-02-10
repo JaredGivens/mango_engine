@@ -1,6 +1,2 @@
 [workspace]
-members = ["platforms/*", "examples/*", "mg_core", "mg_physics", "mg_render"]
-
-
-
-
+members = ["platforms/*", "examples/*", "mg_core", "mg_render"]

@@ -1,6 +1,5 @@
 use crate::Buttons;
 use mg_core::*;
-use mg_physics::Race;
 use mg_render::{graphics::Graphics, scene::Scene};
 
 #[derive(PartialEq)]

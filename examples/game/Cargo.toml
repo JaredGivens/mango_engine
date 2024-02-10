@@ -16,7 +16,6 @@ egui = {version="0.24.1", default-features=false}
 egui-winit = {version="0.24.1", default-features=false}
 egui-wgpu = "0.24.1"
 
-mg_physics = {path ="../../mg_physics"}
 mg_render = {path ="../../mg_render"}
 mg_core = {path ="../../mg_core"}
 

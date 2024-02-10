@@ -1,5 +1,4 @@
 #[macro_use]
-extern crate mg_physics;
 mod assets;
 mod editor;
 mod time;
@@ -9,7 +8,6 @@ use assets::Assets;
 use bitflags::bitflags;
 use editor::Editor;
 use mg_core::*;
-use mg_physics::track;
 use mg_render::{graphics::Graphics, instance, scene::Scene};
 use winit::{
     event::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent},
@@ -45,7 +43,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 struct App {
     graphics: Graphics,
     renderer: mg_render::Renderer,
-    shared: Arc<mg_physics::Shared>,
     scene: Scene,
     state: State,
     buttons: Buttons,
@@ -58,7 +55,6 @@ impl App {
     async fn new(event_loop: &winit::event_loop::EventLoop<()>) -> App {
         let graphics = Graphics::new(event_loop).await;
         let renderer = mg_render::Renderer::new(&graphics);
-        let shared = Arc::new(mg_physics::Shared::new());
         let egui = ui::Egui::new(&graphics);
         let mut scene = Scene::new(&graphics);
         let assets = Assets::new(&graphics);
@@ -75,7 +71,6 @@ impl App {
         App {
             graphics,
             renderer,
-            shared,
             scene,
             egui,
             assets,
