@@ -64,6 +64,4 @@ pub struct Mesh {
     pub name: String,
     pub geometry: Arc<Geometry>,
     pub material: Arc<Material>,
-    pub g_pipeline: Option<wgpu::RenderPipeline>,
-    pub ray_pipeline: Option<wgpu::ComputePipeline>,
 }

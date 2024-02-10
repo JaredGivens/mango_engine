@@ -30,7 +30,9 @@ impl Assets {
             },
         ));
 
-        Geometry::from_gltf("glbs/PKG_D.1_10kCandles/NewSponza_4_Combined_gltf");
+        gltf::Gltf::Geometry::from_gltf(
+            "../../assets/PKG_D.1_10kCandles/NewSponza_4_Combined_gltf",
+        );
 
         let gyro_kart = Mesh {
             name: "gyro kart".to_owned(),

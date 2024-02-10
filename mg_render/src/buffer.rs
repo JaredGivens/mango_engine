@@ -1,4 +1,4 @@
-struct Buffer {
+pub struct Buffer {
     pub bin: Box<[u8]>,
-    pub buffer: wgpu::Buffer,
+    pub gpu_buffer: wgpu::Buffer,
 }

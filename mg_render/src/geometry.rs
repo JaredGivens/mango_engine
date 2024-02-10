@@ -27,59 +27,6 @@ pub struct Geometry {
     pub elm_amt: u32,
     pub ranges: Ranges,
     pub buffer: Arc<Buffer>,
-}
-
-impl Geometry {
-    pub fn from_gltf(graphics: &Graphics, name: &str) {}
-
-    pub fn from_glb(graphics: &Graphics, name: &str) -> Geometry {
-        let f = std::fs::File::open(name).unwrap();
-        let reader = std::io::BufReader::new(f);
-        let glb = Glb::from_reader(reader).unwrap();
-        let gltf = Gltf::from_slice_without_validation(glb.json.as_ref()).unwrap();
-
-        let bin = glb.bin.unwrap().into_owned().into_boxed_slice();
-        let buffer = graphics
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(format!("{} buffer", name).as_str()),
-                contents: bin.as_ref(),
-                usage: wgpu::BufferUsages::VERTEX
-                    | wgpu::BufferUsages::INDEX
-                    | wgpu::BufferUsages::STORAGE,
-            });
-        let mesh = gltf
-            .scenes()
-            .next()
-            .unwrap()
-            .nodes()
-            .find(|n| n.mesh().is_some())
-            .unwrap()
-            .mesh()
-            .unwrap();
-
-        log::warn!("primitives {}", mesh.primitives().len());
-        let primitive = mesh.primitives().next().unwrap();
-        let mut ranges = Ranges {
-            index: [0, 0], // Initialize with default values
-            vertex: [0, 0], // Initialize with default values
-            uv: [0, 0], // Initialize with default values
-        };
-
-        let mut elm_amt = 0;
-        log::info!("{:?}", primitive);
-        if let Some(view) = primitive.get(&gltf::Semantic::TexCoords(2)).unwrap().view() {
-            ranges.uv[0] = view.offset() as u32;
-            ranges.uv[1] = (view.offset() + view.length()) as u32;
-        }
-
-        Geometry {
-            elm_amt,
-            ranges,
-            buffer,
-            // bin,
-            // g_pipeline: None,
-            // ray_pipeline: None,
-        }
-    }
+    pub g_pipeline: Option<wgpu::RenderPipeline>,
+    pub ray_pipeline: Option<wgpu::ComputePipeline>,
 }

@@ -152,7 +152,7 @@ impl Scene {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: mesh.geometry.buffer.as_entire_binding(),
+                        resource: mesh.geometry.buffer.gpu_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,

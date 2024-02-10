@@ -1,7 +1,9 @@
 #[macro_use]
 pub mod camera;
+pub mod buffer;
 pub mod g_buffer;
 pub mod geometry;
+pub mod gltf_loader;
 pub mod graphics;
 pub mod instance;
 mod irradiance_cache;
@@ -385,7 +387,10 @@ impl Renderer {
                 render_pass.set_bind_group(1, &mesh.material.bind_group, &[]);
                 render_pass.set_vertex_buffer(
                     0,
-                    mesh.geometry.buffer.slice(mesh.geometry.ranges.vertex()),
+                    mesh.geometry
+                        .buffer
+                        .gpu_buffer
+                        .slice(mesh.geometry.ranges.vertex()),
                 );
                 if let Some(ib) = &inst_prop.buffer {
                     render_pass.set_vertex_buffer(1, ib.slice(inst_prop.range()));
@@ -395,12 +400,20 @@ impl Renderer {
                         scene.ray_buffer.world_tsfs_buffer.slice(inst_prop.range()),
                     );
                 }
-                render_pass
-                    .set_vertex_buffer(2, mesh.geometry.buffer.slice(mesh.geometry.ranges.uv()));
+                render_pass.set_vertex_buffer(
+                    2,
+                    mesh.geometry
+                        .buffer
+                        .gpu_buffer
+                        .slice(mesh.geometry.ranges.uv()),
+                );
 
                 //if mesh.geometry.ranges.index() {
                 render_pass.set_index_buffer(
-                    mesh.geometry.buffer.slice(mesh.geometry.ranges.index()),
+                    mesh.geometry
+                        .buffer
+                        .gpu_buffer
+                        .slice(mesh.geometry.ranges.index()),
                     wgpu::IndexFormat::Uint16,
                 );
                 render_pass.draw_indexed(0..mesh.geometry.elm_amt, 0, 0..inst_prop.amt);
