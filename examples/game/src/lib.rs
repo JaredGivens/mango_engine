@@ -58,16 +58,18 @@ impl App {
         let egui = ui::Egui::new(&graphics);
         let mut scene = Scene::new(&graphics);
         let assets = Assets::new(&graphics);
-        scene.instantiate_mesh(
-            &graphics,
-            assets.gyro_kart.clone(),
-            instance::Params {
-                amt: 2,
-                bin: None,
-                buffer: None,
-                range: None,
-            },
-        );
+        for mesh in assets.meshes.iter() {
+            scene.instantiate_mesh(
+                &graphics,
+                mesh.clone(),
+                instance::Params {
+                    amt: 1,
+                    bin: None,
+                    buffer: None,
+                    range: None,
+                },
+            );
+        }
         App {
             graphics,
             renderer,

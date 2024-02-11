@@ -1,6 +1,6 @@
 use crate::graphics::Graphics;
-use mg_core::*;
 use image::GenericImageView;
+use mg_core::*;
 
 pub struct Texture {
     pub texture: wgpu::Texture,

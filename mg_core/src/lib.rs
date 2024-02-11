@@ -5,6 +5,8 @@ pub use parking_lot::MutexGuard;
 pub use parry3d::na;
 pub use parry3d::query::RayCast;
 pub use std::f32::consts::*;
+pub use std::fs;
+use std::io::Read;
 pub use std::sync::atomic;
 pub use std::sync::Arc;
 
@@ -24,4 +26,12 @@ pub type Tri = parry3d::shape::Triangle;
 
 pub fn as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     unsafe { core::slice::from_raw_parts((p as *const T) as *const u8, core::mem::size_of::<T>()) }
+}
+
+pub fn read_file_to_end(filename: &str) -> Vec<u8> {
+    let mut f = fs::File::open(filename).expect("open image");
+    let metadata = fs::metadata(filename).expect("unable to read metadata");
+    let mut bytes = vec![0; metadata.len() as usize];
+    f.read_to_end(&mut bytes).expect("buffer overflow");
+    bytes
 }

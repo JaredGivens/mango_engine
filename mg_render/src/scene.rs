@@ -157,12 +157,14 @@ impl Scene {
                     wgpu::BindGroupEntry {
                         binding: 3,
                         resource: wgpu::BindingResource::TextureView(
-                            &mesh.material.emission_texture.view,
+                            &mesh.material.bindings.emission_tx.view,
                         ),
                     },
                     wgpu::BindGroupEntry {
                         binding: 4,
-                        resource: wgpu::BindingResource::Sampler(&mesh.material.emission_sampler),
+                        resource: wgpu::BindingResource::Sampler(
+                            &mesh.material.bindings.emission_sampler,
+                        ),
                     },
                 ],
             });

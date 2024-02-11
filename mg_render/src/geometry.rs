@@ -1,8 +1,6 @@
 use crate::{buffer::Buffer, graphics::Graphics};
-use gltf::{Glb, Gltf};
 use mg_core::*;
 use std::ops::Range;
-use wgpu::util::DeviceExt;
 
 #[repr(C)]
 pub struct Ranges {

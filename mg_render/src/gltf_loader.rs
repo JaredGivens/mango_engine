@@ -1,7 +1,18 @@
-use crate::{buffer::Buffer, geometry, graphics::Graphics, material::Material, mesh::Mesh};
+use crate::{
+    buffer::Buffer, geometry, geometry::Geometry, graphics::Graphics, material, material::Material,
+    mesh::Mesh, texture::Texture,
+};
+use gltf::Gltf;
 use mg_core::*;
+use wgpu::util::DeviceExt;
 
-fn parse_meshes(mesh: gltf::Mesh, buffer: Arc<Buffer>) -> Vec<Mesh> {
+fn parse_meshes(
+    graphics: &Graphics,
+    defaults: &material::Defaults,
+    mesh: &gltf::Mesh,
+    buffer: Arc<Buffer>,
+    materials: &Vec<Arc<Material>>,
+) -> Vec<Mesh> {
     mesh.primitives()
         .map(|p| {
             let vertex_view = p.get(&gltf::Semantic::Positions).unwrap().view().unwrap();
@@ -27,72 +38,103 @@ fn parse_meshes(mesh: gltf::Mesh, buffer: Arc<Buffer>) -> Vec<Mesh> {
                 ranges.uv[0] = view.offset() as u32;
                 ranges.uv[1] = (view.offset() + view.length()) as u32;
             }
+            let geometry = Arc::new(Geometry {
+                elm_amt,
+                ranges,
+                buffer: buffer.clone(),
+                g_pipeline: None,
+                ray_pipeline: None,
+            });
+            let material = p
+                .material()
+                .index()
+                .map_or(defaults.material.clone(), |i| materials[i].clone());
+
+            Mesh {
+                name: mesh.name().unwrap_or("").to_string(),
+                geometry,
+                material,
+            }
+        })
+        .collect()
+}
+
+enum ImgSrc<'a> {
+    Slice(&'a [u8]),
+    Array(Box<[u8]>),
+}
+
+fn parse_materials(
+    graphics: &Graphics,
+    defaults: &material::Defaults,
+    doc: &gltf::Document,
+    buffer: Arc<Buffer>,
+    path: &str,
+) -> Vec<Arc<Material>> {
+    let img_sources: Vec<_> = doc
+        .images()
+        .map(|i| match i.source() {
+            gltf::image::Source::View { view, .. } => {
+                ImgSrc::Slice(&buffer.bin[view.offset()..view.offset() + view.length()])
+            }
+            gltf::image::Source::Uri { uri, .. } => {
+                let filename = path.to_string() + uri;
+                let bytes = read_file_to_end(filename.as_str());
+                ImgSrc::Array(bytes.into_boxed_slice())
+            }
         })
         .collect();
+    let textures: Vec<_> = doc
+        .textures()
+        .map(|t| {
+            Arc::new(Texture::create_image_texture(
+                graphics,
+                (path.to_string() + " img").as_str(),
+                match &img_sources[t.source().index()] {
+                    ImgSrc::Slice(slice) => slice,
+                    ImgSrc::Array(array) => &array[..],
+                },
+            ))
+        })
+        .collect();
+    doc.materials()
+        .map(|m| {
+            let albedo_tx = match m.pbr_metallic_roughness().base_color_texture() {
+                Some(t) => textures[t.texture().index()].clone(),
+                None => defaults.material.bindings.albedo_tx.clone(),
+            };
+            let emission_tx = match m.emissive_texture() {
+                Some(t) => textures[t.texture().index()].clone(),
+                None => defaults.material.bindings.emission_tx.clone(),
+            };
+            Arc::new(Material::new(
+                graphics,
+                m.name(),
+                material::Bindings {
+                    albedo_tx,
+                    emission_tx,
+                    ..defaults.material.bindings.clone()
+                },
+            ))
+        })
+        .collect()
 }
 
-fn parse_materials(graphics: &Graphics, doc: gltf::Document, buffer: Arc<Buffer>, path: &str) -> Vec<Material> {
-    let images = doc.images().map(|i| {
-        let filename = match i.source() {
-            gltf::image::Source::View(_) => "".to_string(),
-            gltf::image::Source::Uri{uri, ..} =>  name.to_string() + uri,
-        };
-        texture::create_image_texture(graphics)
-    });
-    doc.textures().map(|t| {
-        
-    })
-    doc.materials().map(|m| {
-        m.
-    })
-    mesh.primitives().map(|p| p.material()).collect()
-}
-
-pub fn from_glb(graphics: &Graphics, name: &str) -> Geometry {
-    let f = std::fs::File::open(name).unwrap();
-    let reader = std::io::BufReader::new(f);
-    let glb = Glb::from_reader(reader).unwrap();
-    let gltf = Gltf::from_slice_without_validation(glb.json.as_ref()).unwrap();
-
-    let mesh = gltf
-        .scenes()
-        .next()
-        .unwrap()
-        .nodes()
-        .find(|n| n.mesh().is_some())
-        .unwrap()
-        .mesh()
-        .unwrap();
-
-    log::warn!("primitives {}", mesh.primitives().len());
-    let primitive = mesh.primitives().next().unwrap();
-
-    log::info!("{:?}", primitive);
-    if let Some(view) = primitive.get(&gltf::Semantic::TexCoords(2)).unwrap().view() {
-        ranges.uv[0] = view.offset() as u32;
-        ranges.uv[1] = (view.offset() + view.length()) as u32;
-    }
-
-    Geometry {
-        elm_amt,
-        ranges,
-        buffer,
-        bin,
-        g_pipeline: None,
-        ray_pipeline: None,
-    }
-}
-pub fn load_gltf(graphics: &Graphics, name: &str) {
+pub fn meshes_from_embeded(graphics: &Graphics, name: &str) {
     let gltf = Gltf::open(name).expect(format!("file not found \"{:?}\"", name).as_str());
 }
-pub fn load_separated(graphics: &Graphics, name: &str) {
-    let gltf = Gltf::open(
-        format("{}.gltf", name).expect(format!("file not found \"{:?}\"", name).as_str()),
-    );
-    let mut f = File::open(&format!("{}.bin", name)).expect("no file found");
-    let metadata = fs::metadata(&filename).expect("unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
+pub fn meshes_from_separated(
+    graphics: &Graphics,
+    defaults: &material::Defaults,
+    path: &str,
+    name: &str,
+) -> Vec<Mesh> {
+    let gltf = Gltf::open(format!("{}{}.gltf", path, name))
+        .expect(format!("file not found {:?}", name).as_str());
+    let filename = format!("{}{}.bin", path, name);
+    let bytes = read_file_to_end(filename.as_str());
+    let bin = bytes.into_boxed_slice();
+    meshes_from_gltf(graphics, defaults, &gltf, bin, path, name)
 }
 //let f = std::fs::File::open(name).unwrap();
 //let reader = std::io::BufReader::new(f);
@@ -100,8 +142,14 @@ pub fn load_separated(graphics: &Graphics, name: &str) {
 //let gltf = Gltf::from_slice_without_validation(glb.json.as_ref()).unwrap();
 //let bin = glb.bin.unwrap().into_owned().into_boxed_slice();
 
-pub fn from_gltf(graphics: &Graphics, gltf: &Gltf, bin: Box<[u8]>) -> Geometry {
-    let name = gltf.scenes().next().unwrap().name().unwrap();
+fn meshes_from_gltf(
+    graphics: &Graphics,
+    defaults: &material::Defaults,
+    gltf: &Gltf,
+    bin: Box<[u8]>,
+    path: &str,
+    name: &str,
+) -> Vec<Mesh> {
     let gpu_buffer = graphics
         .device
         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -112,44 +160,21 @@ pub fn from_gltf(graphics: &Graphics, gltf: &Gltf, bin: Box<[u8]>) -> Geometry {
                 | wgpu::BufferUsages::STORAGE,
         });
     let buffer = Arc::new(Buffer { bin, gpu_buffer });
-    let materials = parse_materials(gltf.document.materials());
-    gltf.scenes().for_each(|scene| {
-        scene.nodes().for_each(|node| {
-            if let Some(mesh) = node.mesh() {
-                pa(graphics, mesh, materials);
-            }
+    let buffer2 = buffer.clone();
+    let materials = parse_materials(graphics, defaults, &gltf.document, buffer, path);
+    gltf.scenes()
+        .map(|scene| {
+            scene
+                .nodes()
+                .filter_map(|node| match node.mesh() {
+                    Some(mesh) => Some(
+                        parse_meshes(graphics, defaults, &mesh, buffer2.clone(), &materials)
+                            .into_iter(),
+                    ),
+                    None => None,
+                })
+                .flatten()
         })
-    })
-    let mesh = gltf
-        .scenes()
-        .next()
-        .unwrap()
-        .nodes()
-        .find(|n| n.mesh().is_some())
-        .unwrap()
-        .mesh()
-        .unwrap();
-
-    log::warn!("primitives {}", mesh.primitives().len());
-    let primitive = mesh.primitives().next().unwrap();
-    let mut ranges = Ranges {
-        index: [0, 0],  // Initialize with default values
-        vertex: [0, 0], // Initialize with default values
-        uv: [0, 0],     // Initialize with default values
-    };
-
-    let mut elm_amt = 0;
-    log::info!("{:?}", primitive);
-    if let Some(view) = primitive.get(&gltf::Semantic::TexCoords(2)).unwrap().view() {
-        ranges.uv[0] = view.offset() as u32;
-        ranges.uv[1] = (view.offset() + view.length()) as u32;
-    }
-
-    Geometry {
-        elm_amt,
-        ranges,
-        buffer,
-        g_pipeline: None,
-        ray_pipeline: None,
-    }
+        .flatten()
+        .collect()
 }
