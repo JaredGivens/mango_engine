@@ -2,6 +2,13 @@ use crate::{geometry::Geometry, graphics::Graphics, material::Material};
 
 use mg_core::*;
 
+#[derive(Clone)]
+pub struct Mesh {
+    pub name: String,
+    pub geometry: Arc<Geometry>,
+    pub material: Arc<Material>,
+}
+
 pub fn bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
     graphics
         .device
@@ -57,11 +64,4 @@ pub fn bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
                 },
             ],
         })
-}
-
-#[derive(Clone)]
-pub struct Mesh {
-    pub name: String,
-    pub geometry: Arc<Geometry>,
-    pub material: Arc<Material>,
 }

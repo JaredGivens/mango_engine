@@ -1,7 +1,7 @@
 use mg_core::*;
 use mg_render::{
-    geometry::Geometry, gltf_loader, graphics::Graphics, material, material::Material, mesh::Mesh,
-    texture::Texture,
+    geometry::Geometry, gltf_loader, graphics::Graphics, material, material::Material,
+    texture::Texture, mesh::Mesh, mesh
 };
 
 pub struct Assets {

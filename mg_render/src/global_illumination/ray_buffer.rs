@@ -72,6 +72,7 @@ pub fn read_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
             ],
         })
 }
+
 pub fn write_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
     graphics
         .device

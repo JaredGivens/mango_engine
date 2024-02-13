@@ -1,4 +1,5 @@
 #[macro_use]
+// Render
 pub mod camera;
 pub mod buffer;
 pub mod g_buffer;
@@ -6,20 +7,25 @@ pub mod geometry;
 pub mod gltf_loader;
 pub mod graphics;
 pub mod instance;
-mod irradiance_cache;
-pub mod material;
-pub mod mesh;
-pub mod ray_buffer;
-pub mod scene;
-pub mod texture;
 
 use camera::Camera;
 use g_buffer::GBuffer;
 use graphics::Graphics;
 use instance::Inst;
-use irradiance_cache::IrradianceCache;
+
+// Model data
+pub mod mesh;
+pub mod material;
+pub mod scene;
+pub mod texture;
+
+// Global Illumination
+pub mod global_illumination;
+use global_illumination::irradiance_cache::IrradianceCache;
+use crate::global_illumination::ray_buffer;
+
+// Core
 use mg_core::*;
-use ray_buffer::RayBuffer;
 use scene::Scene;
 use std::mem::size_of;
 

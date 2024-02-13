@@ -1,10 +1,13 @@
 use crate::{
-    camera::Camera, graphics::Graphics, instance, mesh, mesh::Mesh, ray_buffer::RayBuffer, Vertex,
+    camera::Camera, graphics::Graphics, instance, Vertex, mesh::Mesh, mesh
 };
 use mg_core::*;
 use std::collections::VecDeque;
 use std::mem::size_of;
 use wgpu::util::DeviceExt;
+
+use crate::global_illumination::ray_buffer::*;
+// use crate::mesh::{Mesh, bind_group_layout};
 
 struct LocalNode {
     pub child_count: usize,
@@ -76,6 +79,7 @@ impl Scene {
             accel_struct_buffer,
         }
     }
+
     pub fn update(&mut self) {
         self.world_deque.clear();
         for i in 0..self.root_count {
@@ -106,6 +110,7 @@ impl Scene {
         }
         offset + parent.child_count
     }
+
     pub fn instantiate_mesh(
         &mut self,
         graphics: &Graphics,
@@ -180,6 +185,7 @@ impl Scene {
         self.resize(graphics);
         self.meshes.len()
     }
+
     pub fn resize(&mut self, graphics: &Graphics) {
         self.camera.resize(graphics);
         self.ray_buffer = RayBuffer::new(

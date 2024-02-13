@@ -7,11 +7,13 @@ struct Entry {
     lifetime: u32,
     color: Vertex,
 }
+
 pub struct IrradianceCache {
     entries: Box<[Entry]>,
     buffer: wgpu::Buffer,
     pub bind_group: wgpu::BindGroup,
 }
+
 impl IrradianceCache {
     pub fn bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
         graphics
