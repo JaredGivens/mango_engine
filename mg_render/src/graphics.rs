@@ -1,60 +1,11 @@
 use mg_core::*;
+use winit::window::Window;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::rc::Rc;
-use winit::window::Window;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
-#[cfg(target_arch = "wasm32")]
-use web_sys::HtmlCanvasElement;
-#[cfg(target_arch = "wasm32")]
-use winit::platform::web::WindowBuilderExtWebSys;
-#[cfg(target_arch = "wasm32")]
-fn window_size(_: Ref<Window>) -> (u32, u32) {
-    (
-        web_sys::window()
-            .unwrap()
-            .inner_width()
-            .unwrap()
-            .as_f64()
-            .unwrap() as u32,
-        web_sys::window()
-            .unwrap()
-            .inner_height()
-            .unwrap()
-            .as_f64()
-            .unwrap() as u32,
-    )
-}
-
-#[cfg(target_arch = "wasm32")]
-fn web_add_resize(window: Rc<RefCell<Window>>) -> Closure<dyn FnMut(web_sys::Event)> {
-    use crate::winit::dpi::LogicalSize;
-    use wasm_bindgen::closure::Closure;
-    let (width, height) = window_size(window.borrow());
-    window
-        .borrow_mut()
-        .set_inner_size(LogicalSize::new(width, height));
-
-    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
-        let (width, height) = window_size(window.borrow());
-        // this triggers window event resize
-        window
-            .borrow_mut()
-            .set_inner_size(LogicalSize::new(width, height));
-    }) as Box<dyn FnMut(_)>);
-    web_sys::window()
-        .unwrap()
-        .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref());
-    closure
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn window_size(window: Ref<Window>) -> (u32, u32) {
-    let physical_size = window.inner_size();
-    (physical_size.width, physical_size.height)
-}
+use std::borrow::Borrow;
+use crate::mango_window::MangoWindow;
 
 #[cfg(target_arch = "wasm32")]
 fn adapter_limits(adapter: &wgpu::Adapter) -> wgpu::Limits {
@@ -67,7 +18,6 @@ fn adapter_limits(_: &wgpu::Adapter) -> wgpu::Limits {
 }
 
 pub struct Graphics {
-    pub window: Rc<RefCell<Window>>,
     pub surface: wgpu::Surface,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -80,31 +30,13 @@ pub struct Graphics {
 }
 
 impl Graphics {
-    pub async fn new(event_loop: &winit::event_loop::EventLoop<()>) -> Graphics {
-        #[cfg(target_arch = "wasm32")]
-        let canvas_element = {
-            console_log::init().expect("Initialize logger");
-            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            web_sys::window()
-                .and_then(|win| win.document())
-                .and_then(|doc| doc.get_element_by_id("iced_canvas"))
-                .and_then(|element| element.dyn_into::<HtmlCanvasElement>().ok())
-                .expect("Get canvas element")
-        };
-
-        let window = {
-            let builder = winit::window::WindowBuilder::new().with_title("mg");
-            #[cfg(target_arch = "wasm32")]
-            let builder = builder.with_canvas(Some(canvas_element));
-            Rc::new(RefCell::new(builder.build(event_loop).unwrap()))
-        };
+    pub async fn new(mg_window: &MangoWindow) -> Graphics {
         #[cfg(target_arch = "wasm32")]
         let default_backend = wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::PRIMARY | wgpu::Backends::GL);
         #[cfg(not(target_arch = "wasm32"))]
         let default_backend = wgpu::Backends::PRIMARY;
 
-        let (width, height) = window_size(window.borrow());
         #[cfg(target_arch = "wasm32")]
         let on_resize = web_add_resize(window.clone());
 
@@ -114,7 +46,7 @@ impl Graphics {
             backends: backend,
             ..Default::default()
         });
-        let surface = unsafe { instance.create_surface(&*window.borrow()) }.unwrap();
+        let surface = unsafe { instance.create_surface(&*mg_window.winit.borrow()) }.unwrap();
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -164,8 +96,8 @@ impl Graphics {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: tx_format_surface,
-            width,
-            height,
+            width: mg_window.width,
+            height: mg_window.height,
             present_mode,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
@@ -177,14 +109,14 @@ impl Graphics {
             device,
             queue,
             config,
-            width,
-            height,
+            width: mg_window.width,
+            height: mg_window.height,
             tx_format_surface,
-            window,
             #[cfg(target_arch = "wasm32")]
             on_resize,
         }
     }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;

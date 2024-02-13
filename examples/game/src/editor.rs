@@ -1,6 +1,7 @@
 use crate::Buttons;
 use mg_core::*;
-use mg_render::{graphics::Graphics, scene::Scene};
+use mg_render::{graphics::Graphics, mango_window::MangoWindow, scene::Scene};
+use std::borrow::BorrowMut;
 
 #[derive(PartialEq)]
 pub enum State {
@@ -22,6 +23,7 @@ impl Editor {
             pitch: 0.0,
         }
     }
+
     pub fn update(&mut self, scene: &mut Scene, buttons: &Buttons, mouse_delta: Vec2f) {
         if self.state == State::Edit {
             let sensitivity = 0.01;
@@ -58,28 +60,30 @@ impl Editor {
                 scene.camera.eye + Vec3f::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin);
         }
     }
-    pub fn start_edit(&mut self, graphics: &Graphics) {
-        let res = graphics
-            .window
+
+    pub fn start_edit(&mut self, window: &mut MangoWindow) {
+        let res = window
+            .winit
             .borrow_mut()
             .set_cursor_grab(winit::window::CursorGrabMode::Confined);
         res.or_else(|_e| {
-            graphics
-                .window
+            window
+                .winit
                 .borrow_mut()
                 .set_cursor_grab(winit::window::CursorGrabMode::Locked)
         })
         .unwrap();
-        graphics.window.borrow_mut().set_cursor_visible(false);
+        window.winit.borrow_mut().set_cursor_visible(false);
         self.state = State::Edit;
     }
-    pub fn start_menu(&mut self, graphics: &Graphics) {
-        graphics
-            .window
+
+    pub fn start_menu(&mut self, window: &mut MangoWindow) {
+        window
+            .winit
             .borrow_mut()
             .set_cursor_grab(winit::window::CursorGrabMode::None)
             .unwrap();
-        graphics.window.borrow_mut().set_cursor_visible(true);
+        window.winit.borrow_mut().set_cursor_visible(true);
         self.state = State::Menu;
     }
 }

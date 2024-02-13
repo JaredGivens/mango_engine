@@ -8,11 +8,14 @@ use assets::Assets;
 use bitflags::bitflags;
 use editor::Editor;
 use mg_core::*;
-use mg_render::{graphics::Graphics, instance, scene::Scene};
+use mg_render::{mango_window::MangoWindow, graphics::Graphics, instance, scene::Scene};
 use winit::{
     event::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent},
     event_loop::ControlFlow,
 };
+
+use std::cell::RefCell;
+use std::borrow::Borrow;
 
 bitflags! {
     #[derive(Default)]
@@ -41,6 +44,7 @@ enum State {
 use wasm_bindgen::prelude::wasm_bindgen;
 
 struct App {
+    window: MangoWindow,
     graphics: Graphics,
     renderer: mg_render::Renderer,
     scene: Scene,
@@ -53,9 +57,13 @@ struct App {
 
 impl App {
     async fn new(event_loop: &winit::event_loop::EventLoop<()>) -> App {
-        let graphics = Graphics::new(event_loop).await;
+        let title = String::from("Mango Engine");
+        let window = MangoWindow::new(title, event_loop);
+        let graphics = Graphics::new(&window).await;
+
+        // let graphics = Graphics::new(event_loop).await;
+        let egui = ui::Egui::new(&graphics, &window);
         let renderer = mg_render::Renderer::new(&graphics);
-        let egui = ui::Egui::new(&graphics);
         let mut scene = Scene::new(&graphics);
         let assets = Assets::new(&graphics);
         for mesh in assets.meshes.iter() {
@@ -71,6 +79,7 @@ impl App {
             );
         }
         App {
+            window,
             graphics,
             renderer,
             scene,
@@ -94,12 +103,13 @@ impl App {
 
     pub fn update(&mut self) {
         self.update_ui();
-        self.graphics.window.borrow().request_redraw();
+        self.window.winit.borrow().request_redraw();
     }
+
     fn update_ui(&mut self) {
         match &mut self.state {
             State::Home => {
-                self.egui.update(&self.graphics, |ctx| {
+                self.egui.update(&self.graphics, &self.window, |ctx| {
                     egui::Window::new("")
                         .title_bar(false)
                         .movable(false)
@@ -112,31 +122,35 @@ impl App {
                         });
                 });
             }
-            State::Editor(editor) => {
-                editor.update(&mut self.scene, &self.buttons, self.mouse_delta);
-                self.mouse_delta = Vec2f::new(0.0, 0.0);
-                self.egui.update(&self.graphics, |ctx| {
-                    egui::Window::new("")
-                        .title_bar(false)
-                        .movable(false)
-                        .collapsible(false)
-                        .resizable(false)
-                        .show(ctx, |ui| match editor.state {
-                            editor::State::Menu => {
-                                if ui.button("map").clicked() {
-                                    editor.start_edit(&self.graphics);
-                                }
-                            }
-                            editor::State::Edit => {
-                                if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-                                    editor.start_menu(&self.graphics);
-                                }
-                            }
-                            editor::State::Test => {}
-                            editor::State::Validation => {}
-                        });
-                });
-            }
+            State::Editor(editor) => {}
+            // State::Editor(editor) => {
+            //     let window_ref = RefCell::new(&self.window);
+
+            //     editor.update(&mut self.scene, &self.buttons, self.mouse_delta);
+            //     self.mouse_delta = Vec2f::new(0.0, 0.0);
+            //     self.egui.update(&self.graphics, &self.window, |ctx| {
+            //         egui::Window::new("")
+            //             .title_bar(false)
+            //             .movable(false)
+            //             .collapsible(false)
+            //             .resizable(false)
+            //             .show(ctx, |ui| match editor.state {
+            //                 editor::State::Menu => {
+            //                     if ui.button("map").clicked() {
+            //                         let mut window_ref_mut = window_ref.borrow_mut();
+            //                         editor.start_edit(&mut *window_ref_mut);
+            //                     }
+            //                 }
+            //                 editor::State::Edit => {
+            //                     if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            //                         editor.start_menu(&mut self.window);
+            //                     }
+            //                 }
+            //                 editor::State::Test => {}
+            //                 editor::State::Validation => {}
+            //             });
+            //     });
+            // }
             State::Race => {}
         }
     }

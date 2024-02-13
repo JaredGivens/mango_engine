@@ -1,8 +1,10 @@
 use mg_core::*;
+use mg_render::mango_window::MangoWindow;
 use mg_render::{graphics::Graphics, texture::Texture};
 use egui_wgpu::renderer::Renderer;
 use egui_wgpu::renderer::ScreenDescriptor;
 use std::cell::Cell;
+use std::borrow::Borrow;
 
 #[derive(Copy, Clone)]
 enum State {
@@ -20,7 +22,7 @@ pub struct Egui {
 }
 
 impl Egui {
-    pub fn new(graphics: &Graphics) -> Egui {
+    pub fn new(graphics: &Graphics, window: &MangoWindow) -> Egui {
         let egui = egui::Context::default();
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
@@ -45,10 +47,10 @@ impl Egui {
         // Tell egui to use these fonts:
         egui.set_fonts(fonts);
         let winit =
-            egui_winit::State::new(egui.viewport_id(), &*graphics.window.borrow(), None, None);
+            egui_winit::State::new(egui.viewport_id(), &*window.winit.borrow(), None, None);
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: [graphics.width, graphics.height],
-            pixels_per_point: egui_winit::pixels_per_point(&egui, &*graphics.window.borrow()),
+            pixels_per_point: egui_winit::pixels_per_point(&egui, &*window.winit.borrow()),
         };
         let renderer = Renderer::new(&graphics.device, graphics.tx_format_surface, None, 1);
         Egui {
@@ -72,14 +74,14 @@ impl Egui {
         let _ = self.winit.on_window_event(&self.egui, &event);
     }
 
-    pub fn update<F>(&mut self, graphics: &Graphics, closure: F)
+    pub fn update<F>(&mut self, graphics: &Graphics, window: &MangoWindow, closure: F)
     where
         F: FnOnce(&egui::Context),
     {
-        let raw_input = self.winit.take_egui_input(&*graphics.window.borrow());
+        let raw_input = self.winit.take_egui_input(&*window.winit.borrow());
         let full_output = self.egui.run(raw_input.clone(), closure);
         self.winit.handle_platform_output(
-            &*graphics.window.borrow(),
+            &*window.winit.borrow(),
             &self.egui,
             full_output.platform_output,
         );
@@ -88,13 +90,14 @@ impl Egui {
             .tessellate(full_output.shapes, full_output.pixels_per_point);
         self.screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
             size_in_pixels: [graphics.width, graphics.height],
-            pixels_per_point: egui_winit::pixels_per_point(&self.egui, &*graphics.window.borrow()),
+            pixels_per_point: egui_winit::pixels_per_point(&self.egui, &*window.winit.borrow()),
         };
         for (id, image_delta) in &full_output.textures_delta.set {
             self.renderer
                 .update_texture(&graphics.device, &graphics.queue, *id, image_delta);
         }
     }
+
     pub fn update_buffers(&mut self, encoder: &mut wgpu::CommandEncoder, graphics: &Graphics) {
         self.renderer.update_buffers(
             &graphics.device,
