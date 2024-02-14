@@ -1,4 +1,4 @@
-use crate::{buffer::Buffer, graphics::Graphics};
+use crate::{buffer::Buffer, wgpu_ctx::WgpuContext};
 use mg_core::*;
 use std::ops::Range;
 

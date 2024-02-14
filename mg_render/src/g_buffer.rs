@@ -1,10 +1,10 @@
 use crate::{
-    graphics::Graphics, texture::Texture, TX_FORMAT_COLOR, TX_FORMAT_DEPTH, TX_FORMAT_NORMAL,
+    wgpu_ctx::WgpuContext, texture::Texture, TX_FORMAT_COLOR, TX_FORMAT_DEPTH, TX_FORMAT_NORMAL,
     TX_FORMAT_POSITION,
 };
 
-pub fn write_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn write_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -56,8 +56,8 @@ pub fn write_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
             label: Some("g bind group layout"),
         })
 }
-pub fn read_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn read_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -121,28 +121,28 @@ pub struct GBuffer {
 }
 
 impl GBuffer {
-    pub fn new(graphics: &Graphics) -> Self {
+    pub fn new(w_ctx: &WgpuContext) -> Self {
         let g_usage = wgpu::TextureUsages::STORAGE_BINDING
             | wgpu::TextureUsages::RENDER_ATTACHMENT
             | wgpu::TextureUsages::TEXTURE_BINDING;
         let albedo_texture =
-            Texture::create_texture(graphics, "g albedo texture", TX_FORMAT_COLOR, g_usage);
+            Texture::create_texture(w_ctx, "g albedo texture", TX_FORMAT_COLOR, g_usage);
         let emission_texture =
-            Texture::create_texture(graphics, "g emission texture", TX_FORMAT_COLOR, g_usage);
+            Texture::create_texture(w_ctx, "g emission texture", TX_FORMAT_COLOR, g_usage);
         let position_texture =
-            Texture::create_texture(graphics, "g position texture", TX_FORMAT_POSITION, g_usage);
+            Texture::create_texture(w_ctx, "g position texture", TX_FORMAT_POSITION, g_usage);
         let normal_texture =
-            Texture::create_texture(graphics, "g normal texture", TX_FORMAT_NORMAL, g_usage);
+            Texture::create_texture(w_ctx, "g normal texture", TX_FORMAT_NORMAL, g_usage);
         let depth_texture = Texture::create_texture(
-            graphics,
+            w_ctx,
             "depth texture",
             TX_FORMAT_DEPTH,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         );
-        let read_bind_group = graphics
+        let read_bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &read_bind_group_layout(graphics),
+                layout: &read_bind_group_layout(w_ctx),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -163,10 +163,10 @@ impl GBuffer {
                 ],
                 label: Some("g read bind group"),
             });
-        let write_bind_group = graphics
+        let write_bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &write_bind_group_layout(graphics),
+                layout: &write_bind_group_layout(w_ctx),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,

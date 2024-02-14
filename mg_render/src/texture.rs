@@ -1,4 +1,4 @@
-use crate::graphics::Graphics;
+use crate::wgpu_ctx::WgpuContext;
 use image::GenericImageView;
 use mg_core::*;
 
@@ -8,14 +8,14 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn create_image_texture(graphics: &Graphics, name: &str, bytes: &[u8]) -> Self {
+    pub fn create_image_texture(w_ctx: &WgpuContext, name: &str, bytes: &[u8]) -> Self {
         let img_result = image::load_from_memory(bytes);
         let img = match img_result {
             Ok(img) => img,
             Err(_) => {
                 // Create a blank RGBA8 image with dimensions 1x1
                 let rgba = image::ImageBuffer::from_pixel(1, 1, image::Rgba([0, 0, 0, 255]));
-                return Self::create_blank_texture(graphics, name, rgba);
+                return Self::create_blank_texture(w_ctx, name, rgba);
             }
         };
         let rgba = img.to_rgba8();
@@ -26,7 +26,8 @@ impl Texture {
             height: dimensions.1,
             depth_or_array_layers: 1,
         };
-        let texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
+
+        let texture = w_ctx.device.create_texture(&wgpu::TextureDescriptor {
             label: Some(name),
             size,
             mip_level_count: 1,
@@ -37,7 +38,7 @@ impl Texture {
             view_formats: &[],
         });
 
-        graphics.queue.write_texture(
+        w_ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 aspect: wgpu::TextureAspect::All,
                 texture: &texture,
@@ -58,14 +59,14 @@ impl Texture {
     }
 
     pub fn create_texture(
-        graphics: &Graphics,
+        w_ctx: &WgpuContext,
         label: &str,
         format: wgpu::TextureFormat,
         usage: wgpu::TextureUsages,
     ) -> Self {
         let size = wgpu::Extent3d {
-            width: graphics.width,
-            height: graphics.height,
+            width: w_ctx.width,
+            height: w_ctx.height,
             depth_or_array_layers: 1,
         };
         let desc = wgpu::TextureDescriptor {
@@ -78,12 +79,12 @@ impl Texture {
             usage,
             view_formats: &[],
         };
-        let texture = graphics.device.create_texture(&desc);
+        let texture = w_ctx.device.create_texture(&desc);
         let view = texture.create_view(&Default::default());
         Self { texture, view }
     }
 
-    fn create_blank_texture(graphics: &Graphics, name: &str, rgba: image::RgbaImage) -> Self {
+    fn create_blank_texture(w_ctx: &WgpuContext, name: &str, rgba: image::RgbaImage) -> Self {
         let dimensions = rgba.dimensions();
 
         let size = wgpu::Extent3d {
@@ -91,7 +92,7 @@ impl Texture {
             height: dimensions.1,
             depth_or_array_layers: 1,
         };
-        let texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
+        let texture = w_ctx.device.create_texture(&wgpu::TextureDescriptor {
             label: Some(name),
             size,
             mip_level_count: 1,
@@ -102,7 +103,7 @@ impl Texture {
             view_formats: &[],
         });
 
-        graphics.queue.write_texture(
+        w_ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 aspect: wgpu::TextureAspect::All,
                 texture: &texture,

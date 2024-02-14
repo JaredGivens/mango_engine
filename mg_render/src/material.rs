@@ -1,4 +1,4 @@
-use crate::{graphics::Graphics, texture::Texture, texture_bind_group_layout};
+use crate::{wgpu_ctx::WgpuContext, texture::Texture, texture_bind_group_layout};
 use mg_core::*;
 
 #[derive(Clone)]
@@ -15,11 +15,11 @@ pub struct Material {
 }
 
 impl Material {
-    pub fn new(graphics: &Graphics, name: Option<&str>, bindings: Bindings) -> Material {
-        let bind_group = graphics
+    pub fn new(w_ctx: &WgpuContext, name: Option<&str>, bindings: Bindings) -> Material {
+        let bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout(graphics),
+                layout: &texture_bind_group_layout(w_ctx),
                 label: name,
                 entries: &[
                     wgpu::BindGroupEntry {
@@ -60,19 +60,19 @@ pub struct Defaults {
 }
 
 impl Defaults {
-    pub fn new(graphics: &Graphics) -> Self {
+    pub fn new(w_ctx: &WgpuContext) -> Self {
         let albedo_tx = Arc::new(Texture::create_image_texture(
-            &graphics,
+            &w_ctx,
             "default albedo",
             include_bytes!("textures/defaultA.png"),
         ));
         let emission_tx = Arc::new(Texture::create_image_texture(
-            &graphics,
+            &w_ctx,
             "default emission",
             include_bytes!("textures/defaultA.png"),
         ));
         let default_sampler = Arc::new(
-            graphics
+            w_ctx
                 .device
                 .create_sampler(&wgpu::SamplerDescriptor::default()),
         );
@@ -82,7 +82,7 @@ impl Defaults {
             emission_tx,
             emission_sampler: default_sampler.clone(),
         };
-        let material = Arc::new(Material::new(graphics, Some("default"), bindings));
+        let material = Arc::new(Material::new(w_ctx, Some("default"), bindings));
         Self { material }
     }
 }

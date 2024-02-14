@@ -1,4 +1,4 @@
-use crate::{graphics::Graphics, Vertex};
+use crate::{wgpu_ctx::WgpuContext, Vertex};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -15,8 +15,8 @@ pub struct IrradianceCache {
 }
 
 impl IrradianceCache {
-    pub fn bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-        graphics
+    pub fn bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+        w_ctx
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -33,19 +33,19 @@ impl IrradianceCache {
                 label: Some("g bind group layout"),
             })
     }
-    pub fn new(graphics: &Graphics) -> Self {
+    pub fn new(w_ctx: &WgpuContext) -> Self {
         let entries = vec![Entry::default(); 16 * 16 * 16 * 16].into_boxed_slice();
-        let buffer = graphics
+        let buffer = w_ctx
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("prism buffer"),
                 contents: bytemuck::cast_slice(&entries[..]),
                 usage: wgpu::BufferUsages::STORAGE,
             });
-        let bind_group = graphics
+        let bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &IrradianceCache::bind_group_layout(graphics),
+                layout: &IrradianceCache::bind_group_layout(w_ctx),
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {

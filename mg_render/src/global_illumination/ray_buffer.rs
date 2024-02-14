@@ -1,12 +1,12 @@
 use crate::{
-    g_buffer::GBuffer, graphics::Graphics, instance::Inst, scene::Scene, texture::Texture,
+    g_buffer::GBuffer, wgpu_ctx::WgpuContext, instance::Inst, scene::Scene, texture::Texture,
     TX_FORMAT_NORMAL, TX_FORMAT_POSITION,
 };
 use mg_core::*;
 use wgpu::util::DeviceExt;
 
-pub fn accel_struct_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn accel_struct_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -23,8 +23,8 @@ pub fn accel_struct_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLay
         })
 }
 
-pub fn read_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn read_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ray read bind group layout"),
@@ -73,8 +73,8 @@ pub fn read_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
         })
 }
 
-pub fn write_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn write_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ray write bind group layout"),
@@ -116,25 +116,25 @@ pub struct RayBuffer {
 }
 
 impl RayBuffer {
-    pub fn new(graphics: &Graphics, accel_struct_buffer: &wgpu::Buffer, amt: usize) -> RayBuffer {
+    pub fn new(w_ctx: &WgpuContext, accel_struct_buffer: &wgpu::Buffer, amt: usize) -> RayBuffer {
         let ray_usage = wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING;
         let origin_texture = Texture::create_texture(
-            &graphics,
+            &w_ctx,
             "ray origin testure",
             TX_FORMAT_POSITION,
             ray_usage,
         );
         let direction_texture = Texture::create_texture(
-            &graphics,
+            &w_ctx,
             "ray direction testure",
             TX_FORMAT_NORMAL,
             ray_usage,
         );
-        let write_bind_group = graphics
+        let write_bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ray write bind group"),
-                layout: &write_bind_group_layout(&graphics),
+                layout: &write_bind_group_layout(&w_ctx),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -148,19 +148,27 @@ impl RayBuffer {
             });
         let world_tsfs =
             vec![Inst(Mat4::identity().into()); if amt != 0 { amt } else { 1 }].into_boxed_slice();
+
+        // TODO: getting around raybuffer so I can work on the gltf parser, NOT a real fix.
+        // let empty_data: [u8; 1] = [1];
+        // let world_tsfs_buffer = w_ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Empty Buffer"),
+        //     contents: &empty_data,
+        //     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
+        // });
         let world_tsfs_buffer =
-            graphics
+            w_ctx
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("world instances buffer"),
+                    label: Some("World instances buffer"),
                     contents: bytemuck::cast_slice(&world_tsfs[..]),
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
                 });
-        let read_bind_group = graphics
+        let read_bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ray read bind group"),
-                layout: &read_bind_group_layout(&graphics),
+                layout: &read_bind_group_layout(&w_ctx),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -182,7 +190,7 @@ impl RayBuffer {
             });
         RayBuffer {
             g_buffer_ind: 0,
-            g_buffers: [GBuffer::new(&graphics), GBuffer::new(&graphics)],
+            g_buffers: [GBuffer::new(&w_ctx), GBuffer::new(&w_ctx)],
             origin_texture,
             direction_texture,
             read_bind_group,

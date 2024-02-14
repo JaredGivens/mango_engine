@@ -8,7 +8,7 @@ use assets::Assets;
 use bitflags::bitflags;
 use editor::Editor;
 use mg_core::*;
-use mg_render::{mango_window::MangoWindow, graphics::Graphics, instance, scene::Scene};
+use mg_render::{mango_window::MangoWindow, wgpu_ctx::WgpuContext, instance, scene::Scene};
 use winit::{
     event::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent},
     event_loop::ControlFlow,
@@ -45,7 +45,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 struct App {
     window: MangoWindow,
-    graphics: Graphics,
+    w_ctx: WgpuContext,
     renderer: mg_render::Renderer,
     scene: Scene,
     state: State,
@@ -59,16 +59,16 @@ impl App {
     async fn new(event_loop: &winit::event_loop::EventLoop<()>) -> App {
         let title = String::from("Mango Engine");
         let window = MangoWindow::new(title, event_loop);
-        let graphics = Graphics::new(&window).await;
+        let w_ctx = WgpuContext::new(&window).await;
 
-        // let graphics = Graphics::new(event_loop).await;
-        let egui = ui::Egui::new(&graphics, &window);
-        let renderer = mg_render::Renderer::new(&graphics);
-        let mut scene = Scene::new(&graphics);
-        let assets = Assets::new(&graphics);
+        // let w_ctx = w_ctx::new(event_loop).await;
+        let egui = ui::Egui::new(&w_ctx, &window);
+        let renderer = mg_render::Renderer::new(&w_ctx);
+        let mut scene = Scene::new(&w_ctx);
+        let assets = Assets::new(&w_ctx);
         for mesh in assets.meshes.iter() {
             scene.instantiate_mesh(
-                &graphics,
+                &w_ctx,
                 mesh.clone(),
                 instance::Params {
                     amt: 1,
@@ -80,7 +80,7 @@ impl App {
         }
         App {
             window,
-            graphics,
+            w_ctx,
             renderer,
             scene,
             egui,
@@ -96,9 +96,9 @@ impl App {
             return;
         }
 
-        self.graphics.resize(width, height);
-        self.renderer.resize(&self.graphics);
-        self.scene.resize(&self.graphics);
+        self.w_ctx.resize(width, height);
+        self.renderer.resize(&self.w_ctx);
+        self.scene.resize(&self.w_ctx);
     }
 
     pub fn update(&mut self) {
@@ -109,7 +109,7 @@ impl App {
     fn update_ui(&mut self) {
         match &mut self.state {
             State::Home => {
-                self.egui.update(&self.graphics, &self.window, |ctx| {
+                self.egui.update(&self.w_ctx, &self.window, |ctx| {
                     egui::Window::new("")
                         .title_bar(false)
                         .movable(false)
@@ -128,7 +128,7 @@ impl App {
 
             //     editor.update(&mut self.scene, &self.buttons, self.mouse_delta);
             //     self.mouse_delta = Vec2f::new(0.0, 0.0);
-            //     self.egui.update(&self.graphics, &self.window, |ctx| {
+            //     self.egui.update(&self.w_ctx, &self.window, |ctx| {
             //         egui::Window::new("")
             //             .title_bar(false)
             //             .movable(false)
@@ -156,22 +156,22 @@ impl App {
     }
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = self
-            .graphics
+            .w_ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         self.renderer.geometry_pass(&mut encoder, &self.scene);
         self.renderer.ray_pass(&mut encoder, &mut self.scene);
-        self.graphics.queue.submit(Some(encoder.finish()));
+        self.w_ctx.queue.submit(Some(encoder.finish()));
         let mut encoder = self
-            .graphics
+            .w_ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        let output = self.graphics.surface.get_current_texture()?;
+        let output = self.w_ctx.surface.get_current_texture()?;
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        self.egui.update_buffers(&mut encoder, &self.graphics);
+        self.egui.update_buffers(&mut encoder, &self.w_ctx);
         {
             let mut comp_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("comp pass"),
@@ -191,10 +191,10 @@ impl App {
             self.egui.render(&mut comp_pass);
         }
 
-        self.graphics.queue.submit(Some(encoder.finish()));
+        self.w_ctx.queue.submit(Some(encoder.finish()));
         output.present();
 
-        self.scene.camera.update(&self.graphics);
+        self.scene.camera.update(&self.w_ctx);
         Ok(())
     }
     pub fn on_window_event(&mut self, event: &winit::event::WindowEvent) {

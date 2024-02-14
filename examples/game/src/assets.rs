@@ -1,6 +1,6 @@
 use mg_core::*;
 use mg_render::{
-    geometry::Geometry, gltf_loader, graphics::Graphics, material, material::Material,
+    geometry::Geometry, gltf_loader, wgpu_ctx::WgpuContext, material, material::Material,
     texture::Texture, mesh::Mesh, mesh
 };
 
@@ -10,12 +10,13 @@ pub struct Assets {
 }
 
 impl Assets {
-    pub fn new(graphics: &Graphics) -> Assets {
-        let defaults = material::Defaults::new(graphics);
+    pub fn new(w_ctx: &WgpuContext) -> Assets {
+        // TODO: to make the program not crash give a path/file that doesnt exist
+        let defaults = material::Defaults::new(w_ctx);
         let meshes = gltf_loader::meshes_from_separated(
-            graphics,
+            w_ctx,
             &defaults,
-            "../../assets/PKG_A_Curtains/",
+            "assets/PKG_A_Curtains/",
             "NewSponza_Curtains_glTF",
         );
 

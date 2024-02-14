@@ -1,6 +1,6 @@
 use crate::Buttons;
 use mg_core::*;
-use mg_render::{graphics::Graphics, mango_window::MangoWindow, scene::Scene};
+use mg_render::{wgpu_ctx::WgpuContext, mango_window::MangoWindow, scene::Scene};
 use std::borrow::BorrowMut;
 
 #[derive(PartialEq)]

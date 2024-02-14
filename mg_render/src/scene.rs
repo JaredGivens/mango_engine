@@ -1,5 +1,5 @@
 use crate::{
-    camera::Camera, graphics::Graphics, instance, Vertex, mesh::Mesh, mesh
+    camera::Camera, wgpu_ctx::WgpuContext, instance, Vertex, mesh::Mesh, mesh
 };
 use mg_core::*;
 use std::collections::VecDeque;
@@ -54,12 +54,12 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(graphics: &Graphics) -> Scene {
-        let camera = Camera::new(graphics);
+    pub fn new(w_ctx: &WgpuContext) -> Scene {
+        let camera = Camera::new(w_ctx);
         let background = Vertex([135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0]);
         let accel_struct = vec![0; 65536].into_boxed_slice();
         let accel_struct_buffer =
-            graphics
+            w_ctx
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("accel struct buffer"),
@@ -72,7 +72,7 @@ impl Scene {
             root_count: 0,
             world_deque: VecDeque::with_capacity(128),
             nodes: Vec::with_capacity(1024),
-            ray_buffer: RayBuffer::new(graphics, &accel_struct_buffer, 0),
+            ray_buffer: RayBuffer::new(w_ctx, &accel_struct_buffer, 0),
             meshes: vec![],
             inst_props: vec![],
             accel_struct,
@@ -113,12 +113,12 @@ impl Scene {
 
     pub fn instantiate_mesh(
         &mut self,
-        graphics: &Graphics,
+        w_ctx: &WgpuContext,
         mesh: Mesh,
         inst_param: instance::Params,
     ) -> usize {
         let ranges_uniform =
-            graphics
+            w_ctx
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("geometry buffer"),
@@ -134,18 +134,18 @@ impl Scene {
             }
         };
         let inst_range_uniform =
-            graphics
+            w_ctx
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("geometry buffer"),
                     usage: wgpu::BufferUsages::UNIFORM,
                     contents: as_u8_slice(&range),
                 });
-        let bind_group = graphics
+        let bind_group = w_ctx
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some(format!("{} bind group", mesh.name).as_str()),
-                layout: &mesh::bind_group_layout(&graphics),
+                layout: &mesh::bind_group_layout(&w_ctx),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -182,14 +182,14 @@ impl Scene {
         });
         log::warn!("{}", range[1]);
         self.meshes.push(mesh);
-        self.resize(graphics);
+        self.resize(w_ctx);
         self.meshes.len()
     }
 
-    pub fn resize(&mut self, graphics: &Graphics) {
-        self.camera.resize(graphics);
+    pub fn resize(&mut self, w_ctx: &WgpuContext) {
+        self.camera.resize(w_ctx);
         self.ray_buffer = RayBuffer::new(
-            graphics,
+            w_ctx,
             &self.accel_struct_buffer,
             self.inst_props.last().map_or(0, |ip| ip.range[1]) as usize,
         );

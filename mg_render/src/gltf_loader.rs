@@ -1,5 +1,5 @@
 use crate::{
-    buffer::Buffer, geometry, geometry::Geometry, graphics::Graphics, material, material::Material,
+    buffer::Buffer, geometry, geometry::Geometry, wgpu_ctx::WgpuContext, material, material::Material,
     mesh::Mesh, texture::Texture,
 };
 use gltf::Gltf;
@@ -12,7 +12,7 @@ enum ImgSrc<'a> {
 }
 
 fn parse_meshes(
-    graphics: &Graphics,
+    w_ctx: &WgpuContext,
     defaults: &material::Defaults,
     mesh: &gltf::Mesh,
     buffer: Arc<Buffer>,
@@ -66,7 +66,7 @@ fn parse_meshes(
 }
 
 fn parse_materials(
-    graphics: &Graphics,
+    w_ctx: &WgpuContext,
     defaults: &material::Defaults,
     doc: &gltf::Document,
     buffer: Arc<Buffer>,
@@ -89,7 +89,7 @@ fn parse_materials(
         .textures()
         .map(|t| {
             Arc::new(Texture::create_image_texture(
-                graphics,
+                w_ctx,
                 (path.to_string() + " img").as_str(),
                 match &img_sources[t.source().index()] {
                     ImgSrc::Slice(slice) => slice,
@@ -109,7 +109,7 @@ fn parse_materials(
                 None => defaults.material.bindings.emission_tx.clone(),
             };
             Arc::new(Material::new(
-                graphics,
+                w_ctx,
                 m.name(),
                 material::Bindings {
                     albedo_tx,
@@ -121,12 +121,12 @@ fn parse_materials(
         .collect()
 }
 
-// pub fn meshes_from_embeded(graphics: &Graphics, name: &str) {
+// pub fn meshes_from_embeded(w_ctx: &w_ctx, name: &str) {
 //     let gltf = Gltf::open(name).expect(format!("file not found \"{:?}\"", name).as_str());
 // }
 
 pub fn meshes_from_separated(
-    graphics: &Graphics,
+    w_ctx: &WgpuContext,
     defaults: &material::Defaults,
     path: &str,
     name: &str,
@@ -137,7 +137,6 @@ pub fn meshes_from_separated(
     let gltf_bin_path = format!("{}.bin", file_path);
 
     // Load in GLTF data
-    // Attempt to load the GLTF file
     let gltf = match Gltf::open(&gltf_path) {
         Ok(gltf) => gltf,
         Err(err) => {
@@ -146,10 +145,9 @@ pub fn meshes_from_separated(
         }
     };
 
-    // Assuming read_file_to_end() returns a Result<Vec<u8>, Error>
-    let bytes = read_file_to_end(&gltf_bin_path);
-    let bin = bytes.into_boxed_slice();
-    meshes_from_gltf(graphics, defaults, &gltf, bin, path, name)
+    let mesh_bytes = read_file_to_end(&gltf_bin_path);
+    let mesh_bin = mesh_bytes.into_boxed_slice();
+    meshes_from_gltf(w_ctx, defaults, &gltf, mesh_bin, path, name)
 }
 
 //let f = std::fs::File::open(name).unwrap();
@@ -159,14 +157,14 @@ pub fn meshes_from_separated(
 //let bin = glb.bin.unwrap().into_owned().into_boxed_slice();
 
 fn meshes_from_gltf(
-    graphics: &Graphics,
+    w_ctx: &WgpuContext,
     defaults: &material::Defaults,
     gltf: &Gltf,
     bin: Box<[u8]>,
     path: &str,
     name: &str,
 ) -> Vec<Mesh> {
-    let gpu_buffer = graphics
+    let gpu_buffer = w_ctx
         .device
         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(format!("{} buffer", name).as_str()),
@@ -178,14 +176,14 @@ fn meshes_from_gltf(
 
     let texture_buffer = Arc::new(Buffer { bin, gpu_buffer });
     let mesh_buffer = texture_buffer.clone();
-    let materials = parse_materials(graphics, defaults, &gltf.document, texture_buffer, path);
+    let materials = parse_materials(w_ctx, defaults, &gltf.document, texture_buffer, path);
     gltf.scenes()
         .map(|scene| {
             scene
                 .nodes()
                 .filter_map(|node| match node.mesh() {
                     Some(mesh) => Some(
-                        parse_meshes(graphics, defaults, &mesh, mesh_buffer.clone(), &materials)
+                        parse_meshes(w_ctx, defaults, &mesh, mesh_buffer.clone(), &materials)
                             .into_iter(),
                     ),
                     None => None,

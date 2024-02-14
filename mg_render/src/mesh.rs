@@ -1,4 +1,4 @@
-use crate::{geometry::Geometry, graphics::Graphics, material::Material};
+use crate::{geometry::Geometry, wgpu_ctx::WgpuContext, material::Material};
 
 use mg_core::*;
 
@@ -9,8 +9,8 @@ pub struct Mesh {
     pub material: Arc<Material>,
 }
 
-pub fn bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("mesh bind group layout"),

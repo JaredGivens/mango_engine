@@ -1,6 +1,6 @@
 use mg_core::*;
 use mg_render::mango_window::MangoWindow;
-use mg_render::{graphics::Graphics, texture::Texture};
+use mg_render::{wgpu_ctx::WgpuContext, texture::Texture};
 use egui_wgpu::renderer::Renderer;
 use egui_wgpu::renderer::ScreenDescriptor;
 use std::cell::Cell;
@@ -22,7 +22,7 @@ pub struct Egui {
 }
 
 impl Egui {
-    pub fn new(graphics: &Graphics, window: &MangoWindow) -> Egui {
+    pub fn new(w_ctx: &WgpuContext, window: &MangoWindow) -> Egui {
         let egui = egui::Context::default();
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
@@ -49,10 +49,10 @@ impl Egui {
         let winit =
             egui_winit::State::new(egui.viewport_id(), &*window.winit.borrow(), None, None);
         let screen_descriptor = ScreenDescriptor {
-            size_in_pixels: [graphics.width, graphics.height],
+            size_in_pixels: [w_ctx.width, w_ctx.height],
             pixels_per_point: egui_winit::pixels_per_point(&egui, &*window.winit.borrow()),
         };
-        let renderer = Renderer::new(&graphics.device, graphics.tx_format_surface, None, 1);
+        let renderer = Renderer::new(&w_ctx.device, w_ctx.tx_format_surface, None, 1);
         Egui {
             egui,
             winit,
@@ -74,7 +74,7 @@ impl Egui {
         let _ = self.winit.on_window_event(&self.egui, &event);
     }
 
-    pub fn update<F>(&mut self, graphics: &Graphics, window: &MangoWindow, closure: F)
+    pub fn update<F>(&mut self, w_ctx: &WgpuContext, window: &MangoWindow, closure: F)
     where
         F: FnOnce(&egui::Context),
     {
@@ -89,19 +89,19 @@ impl Egui {
             .egui
             .tessellate(full_output.shapes, full_output.pixels_per_point);
         self.screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-            size_in_pixels: [graphics.width, graphics.height],
+            size_in_pixels: [w_ctx.width, w_ctx.height],
             pixels_per_point: egui_winit::pixels_per_point(&self.egui, &*window.winit.borrow()),
         };
         for (id, image_delta) in &full_output.textures_delta.set {
             self.renderer
-                .update_texture(&graphics.device, &graphics.queue, *id, image_delta);
+                .update_texture(&w_ctx.device, &w_ctx.queue, *id, image_delta);
         }
     }
 
-    pub fn update_buffers(&mut self, encoder: &mut wgpu::CommandEncoder, graphics: &Graphics) {
+    pub fn update_buffers(&mut self, encoder: &mut wgpu::CommandEncoder, w_ctx: &WgpuContext) {
         self.renderer.update_buffers(
-            &graphics.device,
-            &graphics.queue,
+            &w_ctx.device,
+            &w_ctx.queue,
             encoder,
             &self.clipped_primitives,
             &self.screen_descriptor,

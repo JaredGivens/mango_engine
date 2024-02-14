@@ -17,7 +17,7 @@ fn adapter_limits(_: &wgpu::Adapter) -> wgpu::Limits {
     wgpu::Limits::default()
 }
 
-pub struct Graphics {
+pub struct WgpuContext {
     pub surface: wgpu::Surface,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -29,8 +29,8 @@ pub struct Graphics {
     on_resize: Closure<dyn FnMut(web_sys::Event)>,
 }
 
-impl Graphics {
-    pub async fn new(mg_window: &MangoWindow) -> Graphics {
+impl WgpuContext {
+    pub async fn new(mg_window: &MangoWindow) -> WgpuContext {
         #[cfg(target_arch = "wasm32")]
         let default_backend = wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::PRIMARY | wgpu::Backends::GL);
@@ -104,7 +104,7 @@ impl Graphics {
         };
 
         surface.configure(&device, &config);
-        Graphics {
+        WgpuContext {
             surface,
             device,
             queue,

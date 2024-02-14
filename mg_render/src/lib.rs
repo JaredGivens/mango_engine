@@ -8,12 +8,12 @@ pub mod buffer;
 pub mod g_buffer;
 pub mod geometry;
 pub mod gltf_loader;
-pub mod graphics;
+pub mod wgpu_ctx;
 pub mod instance;
 
 use camera::Camera;
 use g_buffer::GBuffer;
-use graphics::Graphics;
+use wgpu_ctx::WgpuContext;
 use instance::Inst;
 
 // Model data
@@ -64,8 +64,8 @@ impl UV {
     }
 }
 
-pub fn background_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn background_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("camera bind group layout"),
@@ -81,8 +81,8 @@ pub fn background_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayou
             }],
         })
 }
-pub fn texture_bind_group_layout(graphics: &Graphics) -> wgpu::BindGroupLayout {
-    graphics
+pub fn texture_bind_group_layout(w_ctx: &WgpuContext) -> wgpu::BindGroupLayout {
+    w_ctx
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("texture bind group layout"),
@@ -134,23 +134,23 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(graphics: &Graphics) -> Renderer {
+    pub fn new(w_ctx: &WgpuContext) -> Renderer {
         let g_pipeline_layout =
-            graphics
+            w_ctx
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("geometry pipeline layout"),
                     bind_group_layouts: &[
-                        &Camera::bind_group_layout(graphics),
-                        &texture_bind_group_layout(graphics),
+                        &Camera::bind_group_layout(w_ctx),
+                        &texture_bind_group_layout(w_ctx),
                     ],
                     push_constant_ranges: &[],
                 });
 
-        let g_shader = graphics
+        let g_shader = w_ctx
             .device
             .create_shader_module(wgpu::include_wgsl!("shader/geometry.wgsl"));
-        let g_pipeline = graphics
+        let g_pipeline = w_ctx
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("geometry pipeline"),
@@ -210,23 +210,23 @@ impl Renderer {
                 multiview: None,
             });
         let ray_pipeline_layout =
-            graphics
+            w_ctx
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ray pipeline layout"),
                     bind_group_layouts: &[
-                        &ray_buffer::read_bind_group_layout(graphics),
-                        &mesh::bind_group_layout(graphics),
-                        &g_buffer::read_bind_group_layout(graphics),
-                        &g_buffer::write_bind_group_layout(graphics),
+                        &ray_buffer::read_bind_group_layout(w_ctx),
+                        &mesh::bind_group_layout(w_ctx),
+                        &g_buffer::read_bind_group_layout(w_ctx),
+                        &g_buffer::write_bind_group_layout(w_ctx),
                     ],
                     push_constant_ranges: &[],
                 });
-        let ray_shader = graphics
+        let ray_shader = w_ctx
             .device
             .create_shader_module(wgpu::include_wgsl!("shader/raytrace.wgsl"));
         let ray_pipeline =
-            graphics
+            w_ctx
                 .device
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("ray pipeline"),
@@ -236,21 +236,21 @@ impl Renderer {
                 });
 
         let comp_pipeline_layout =
-            graphics
+            w_ctx
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("composition pipeline layout"),
                     bind_group_layouts: &[
-                        &g_buffer::read_bind_group_layout(graphics),
-                        &IrradianceCache::bind_group_layout(graphics),
+                        &g_buffer::read_bind_group_layout(w_ctx),
+                        &IrradianceCache::bind_group_layout(w_ctx),
                     ],
                     push_constant_ranges: &[],
                 });
-        let comp_shader = graphics
+        let comp_shader = w_ctx
             .device
             .create_shader_module(wgpu::include_wgsl!("shader/composition.wgsl"));
         let comp_pipeline =
-            graphics
+            w_ctx
                 .device
                 .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("composition pipeline"),
@@ -264,7 +264,7 @@ impl Renderer {
                         module: &comp_shader,
                         entry_point: "fs_main",
                         targets: &[Some(wgpu::ColorTargetState {
-                            format: graphics.tx_format_surface,
+                            format: w_ctx.tx_format_surface,
                             blend: Some(wgpu::BlendState::REPLACE),
                             write_mask: wgpu::ColorWrites::ALL,
                         })],
@@ -286,10 +286,10 @@ impl Renderer {
                     },
                     multiview: None,
                 });
-        let irradiance_cache = IrradianceCache::new(graphics);
+        let irradiance_cache = IrradianceCache::new(w_ctx);
 
         Renderer {
-            g_buffer: GBuffer::new(graphics),
+            g_buffer: GBuffer::new(w_ctx),
             ray_pipeline,
             g_pipeline,
             irradiance_cache,
@@ -297,11 +297,11 @@ impl Renderer {
         }
     }
 
-    pub fn resize(&mut self, graphics: &Graphics) {
-        if graphics.width <= 0 && graphics.height <= 0 {
+    pub fn resize(&mut self, w_ctx: &WgpuContext) {
+        if w_ctx.width <= 0 && w_ctx.height <= 0 {
             return;
         }
-        self.g_buffer = GBuffer::new(graphics);
+        self.g_buffer = GBuffer::new(w_ctx);
     }
 
     pub fn ray_pass(&mut self, encoder: &mut wgpu::CommandEncoder, scene: &mut Scene) {
